@@ -1,8 +1,13 @@
-sdns:	sdns.c table.h
-	cc -o sdns sdns.c
+CFLAGS=-Wall -Wextra
+sdns: sdns.c table.h
+
 
 opt: sdns.c table.h
-	cc -O -o sdns sdns.c
+
 
 table.h:	hosts defaults convert.pl
 	./convert.pl < hosts > table.h
+
+.PHONE: clean 
+clean: sdns
+	rm sdns

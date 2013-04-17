@@ -2,10 +2,16 @@
 
 #ifndef _SDNS_TABLE_H
 #define _SDNS_TABLE_H
+#include <stdio.h>
+#include <string.h>
 
+extern char question[];
+extern char out[];
+extern char answer[];
+extern int account, ancount,arcount ;
 /* translate sets the string 'answer' equal to the answer of the query,
    sets ancount equal to the number of answers in the answer string, and
-   returns the length of the answer string */ 
+   returns the length of the answer string */
 int translate(unsigned short int qtype)
 {
 	if (	!strcmp(question, "1.0.0.127.in-addr.arpa") ||

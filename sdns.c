@@ -4,15 +4,21 @@
 #include <errno.h>
 #include <sys/types.h>
 #include <sys/socket.h>
-#include <linux/in.h>
+//#include <linux/in.h>
 #include <string.h>   /*for memcpy */
 #include <ctype.h>
 #include <arpa/nameser.h>  /*for HEADER structure */
 #include <time.h>
+
+//#include <sys/socket.h>
+//#include <netinet/in.h>
+#include <arpa/inet.h>
+
+
 #define HEADERLENGTH 12
 #define RECVSIZE 512
 #define BUFFSIZE RECVSIZE*4 /* fc - BUFFSIZE better be > 255 bytes bigger than max ethernet frame */
-				/* fc - we really need 3*RECVSIZE + 12 (or so) for a message as well */
+/* fc - we really need 3*RECVSIZE + 12 (or so) for a message as well */
 #define BYTESIZE 255
 #define	TIMESTAMPSIZE 64
 #define DNSPORT  0x3500
@@ -25,15 +31,15 @@
 
 unsigned int qindex, messcount,  messcount2, port;	// log queue should be lengthened
 char in_packet[BUFFSIZE], timestamp[TIMESTAMPSIZE], out_packet[BUFFSIZE], question[BUFFSIZE], answer[BUFFSIZE],
-	oldIP[TIMESTAMPSIZE], oldPort[TIMESTAMPSIZE], oldIP2[TIMESTAMPSIZE], oldPort2[TIMESTAMPSIZE],
-	oldtimestamp[TIMESTAMPSIZE], oldtimestamp2[TIMESTAMPSIZE], lastmess[BUFFSIZE], lastmess2[BUFFSIZE],
-	*read_offset, message[BUFFSIZE], out[BUFFSIZE], newmess[8], *reqtype;
+	 oldIP[TIMESTAMPSIZE], oldPort[TIMESTAMPSIZE], oldIP2[TIMESTAMPSIZE], oldPort2[TIMESTAMPSIZE],
+	 oldtimestamp[TIMESTAMPSIZE], oldtimestamp2[TIMESTAMPSIZE], lastmess[BUFFSIZE], lastmess2[BUFFSIZE],
+	 *read_offset, message[BUFFSIZE], out[BUFFSIZE], newmess[8], *reqtype;
 unsigned char charstilldot, c, d;
 time_t *tloc, t;
 int i, size, inpacketsize, ans_size, retval, sockfd, logcount, ancount, arcount, qtype, ignore;
 FILE *F;
 /* fc HEADER *in_head, *out_head; socklen_t len; struct sockaddr_in servaddr, cliaddr;*/
-HEADER *in_head, *out_head; int len; struct sockaddr_in servaddr, cliaddr;
+HEADER *in_head, *out_head; socklen_t len; struct sockaddr_in servaddr, cliaddr;
 
 #include "table.h"
 
@@ -43,22 +49,26 @@ void logfile(FILE * F)
 	if (!strcmp(message, lastmess)) {
 		messcount++;
 		if (messcount == 10 || messcount == 50 || messcount == 100 || messcount == 1000 || messcount == 2000 || messcount == 5000)
-			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr.s_addr),(cliaddr.sin_port),lastmess,messcount);
+			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),lastmess,messcount);
 		strcpy(oldtimestamp,timestamp);}
 	else if (!strcmp(message, lastmess2)) {
 		messcount2++;
 		if (messcount2 == 10 || messcount2 == 50 || messcount2 == 100 || messcount2 == 1000 || messcount2 == 2000 || messcount2 == 5000)
-			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr.s_addr),(cliaddr.sin_port),lastmess2,messcount2);
+			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),lastmess2,messcount2);
 		strcpy(oldtimestamp2,timestamp);}
 	else    {
 		if (messcount2 > 1)
 			fprintf(F, "%s %s:%s sdns %s (%d times in total)\n",oldtimestamp2,oldIP2,oldPort2,lastmess2,messcount2);
-		messcount2=messcount;strcpy(lastmess2,lastmess);strcpy(oldIP2, oldIP); strcpy(oldPort2,oldPort);
-		strcpy(oldtimestamp2,oldtimestamp); 
-		messcount = 1; strcpy(lastmess,message);sprintf(oldIP,"%s",inet_ntoa(cliaddr.sin_addr.s_addr));
+		messcount2=messcount;
+		strcpy(lastmess2,lastmess);strcpy(oldIP2, oldIP);
+		strcpy(oldPort2,oldPort);
+		strcpy(oldtimestamp2,oldtimestamp);
+		messcount = 1;
+		strcpy(lastmess,message);
+		sprintf(oldIP,"%s",inet_ntoa(cliaddr.sin_addr));
 		sprintf(oldPort,"%d",(cliaddr.sin_port));
 		strcpy(oldtimestamp,timestamp);
-		fprintf(F,"%s %s:%d sdns %s\n",timestamp,inet_ntoa(cliaddr.sin_addr.s_addr),(cliaddr.sin_port),message);}
+		fprintf(F,"%s %s:%d sdns %s\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),message);}
 }
 
 void dumppacket()
@@ -72,19 +82,39 @@ void dumppacket()
 	fclose(F);
 }
 
-int main(int argc, char **argv)
-{LOG2("Starting sdns",0);strcpy(lastmess, "");strcpy(lastmess2, ""); messcount = 0;messcount2 = 0; logcount=0;
-if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1)
-	{LOG1("Can't create socket");printf("Can't create socket\n");exit(1);}
-	if (argv[1]) {bzero(&servaddr, sizeof(servaddr)); servaddr.sin_family = AF_INET; servaddr.sin_addr.s_addr = inet_addr(argv[1]); servaddr.sin_port = DNSPORT; }
-	else {bzero(&servaddr, sizeof(servaddr)); servaddr.sin_family = AF_INET; servaddr.sin_addr.s_addr = 0; servaddr.sin_port = DNSPORT; }
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
+{
+	LOG1("Starting sdns");strcpy(lastmess, "");
+	strcpy(lastmess2, ""); messcount = 0;messcount2 = 0; logcount=0;
+	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
+		LOG1("Can't create socket");printf("Can't create socket\n");exit(1);
+	}
+	if (argv[1]) {
+		bzero(&servaddr, sizeof(servaddr));
+		servaddr.sin_family = AF_INET;
+		servaddr.sin_addr.s_addr = inet_addr(argv[1]);
+		servaddr.sin_port = DNSPORT;
+	} else {
+		bzero(&servaddr, sizeof(servaddr));
+		servaddr.sin_family = AF_INET;
+		servaddr.sin_addr.s_addr = 0;
+		servaddr.sin_port = DNSPORT;
+	}
 	retval = bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
-	if (retval == -1) {LOG1("Can't Bind");printf("Can't Bind\n"); exit(1);}
+	if (retval == -1) {
+		LOG1("Can't Bind");printf("Can't Bind\n");
+		exit(EXIT_FAILURE);
+	}
 	while (1)
-		{for (i = 0; i < BUFFSIZE; i++) {
-			out_packet[i] = '\0'; in_packet[i] = '\0'; question[i] = '\0'; answer[i] = '\0';}
-		len = sizeof(cliaddr); 
-		size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr*)&cliaddr, &len);
+	{
+		for (i = 0; i < BUFFSIZE; i++) {
+			out_packet[i] = '\0';
+			in_packet[i] = '\0';
+			question[i] = '\0';
+			answer[i] = '\0';
+		}
+		len = sizeof(cliaddr);
+		size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
 		inpacketsize=size;
 		if (size > RECVSIZE) {
 			inpacketsize=RECVSIZE;LOG1("System call screwed up - packet too big"); continue;}
@@ -100,23 +130,23 @@ if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1)
 		qindex = 0; size = 0; read_offset = in_packet + HEADERLENGTH;
 		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
 			charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
-			if ((qindex != 0) && (charstilldot != 0)) 
+			if ((qindex != 0) && (charstilldot != 0))
 				question[qindex++] = '.';
 			while (charstilldot--) {
 				question[qindex++] = tolower(read_offset[size++]); } }
 		size++;	/* there could be real hazardous characters in the question... */
 		qtype = read_offset[size] * 256 + read_offset[size + 1]; /* Qtype */
-		if (size <= 1) { 
+		if (size <= 1) {
 			LOG1("Illegal name size (too small)"); continue; }
-		if (size > 255) { 
+		if (size > 255) {
 			LOG1("Illegal name size (too big)"); continue; }
-		port=cliaddr.sin_port; 
+		port=cliaddr.sin_port;
 		if (port == NAMESERVER_PORT) {
 			LOG1("Port 53 as source"); continue;} /* does zone transfer use port 53 source?*/
 		out_head->id = in_head->id;
 		ans_size = translate(qtype);
 		switch (qtype)
-			{case 1:	reqtype="A";ignore=0;break;
+		{case 1:	reqtype="A";ignore=0;break;
 			case 2:		reqtype="NS";ignore=0;break;
 			case 3:		reqtype="MD(old)";ignore=NOTIMP;break;
 			case 4:		reqtype="MF(old)";ignore=NOTIMP;break;
@@ -170,7 +200,7 @@ if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1)
 			case 254: case -2:	reqtype="MAILA";ignore=REFUSED;break;
 			case 255: case -1:	reqtype="ALL";ignore=0;break;
 			default:	reqtype="Unknown";ignore=NOTIMP;break;
-			}
+		}
 		if (ans_size == 0) {
 			LOG4("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
 			out_head->rcode = 3;		/* no such host or domain (we are authoritive) */
@@ -219,8 +249,8 @@ if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1)
 			read_offset = out_packet + size + HEADERLENGTH + 4; out_head->rcode = 0; /* Point read_offset to answer section */
 			memcpy(read_offset, answer, ans_size);}     /* Copy answer section into out packet */
 		if (ignore != -1)
-			{retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len); 
+		{retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
 			if (retval == -1) LOG1("could not send");}
-		}
-exit(0);
+	}
+	exit(0);
 }

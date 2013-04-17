@@ -1,0 +1,102 @@
+sdns - Secure DNS.  
+
+Put the sdns files in /sdns - typically, like this:
+
+	cd /;tar -xvpf sdns.tar
+
+If you wish to use the dsitributed setup (you almost certainly do not) as root type:
+	'sdns'
+
+If you wish to customize sdns, read the rest of this document.
+
+=========== Components:
+
+README		This file
+
+makefile	The makefile for this directory
+		Type 'make' to update sdns to reflect changes
+
+gogo		This is a short shell script that loops forever running sdns
+		It is typically invoked from /etc/rc.d/rc.local
+
+go		This kills the sdns process, allowing an update to be made.
+		If gogo invoked sdns, killing sdns will cause a restart.
+
+hosts		This is the hosts file used to create the lookup tables for sdns
+
+defaults	This is the defaul domain file that specifies default answers for whole domains
+
+convert.pl	This is a perl script that creates table.h from hosts and defaults
+
+table.h		This is the part of the sdns program that specifies answers to specific
+		inquiries on your system.  It is generated from 'defaults' and 'hosts'
+		by convert.pl
+
+sdns.c		This is the C source program for serving DNS inquiries
+
+sdns		This is the executable program for serving DNS inquiries
+
+=========== Operation:
+
+sdns listens on port 53 for DNS requests and replies to them, logging results in
+the 'logfile' file in the /sdns directory.
+
+=========== Changes:
+
+The easiest change to make is to copy a 'hosts' file (typically
+/etc/hosts) into the /sdns directory:
+	cp /etc/hosts /sdns
+
+Then type make:
+	mv sdns zz;make
+
+Then, if you have used 'gogo' to get the sdns running, type:
+	go
+
+This will invoke the changes.
+
+To change default domains, edit 'defauls' then use:
+	mv sdns zz;make
+	go
+as above.
+
+
+
+======================= This describes how to build dns packets with multiple resource records
+
+-------------
+ETH			taken care of by 'sendto'
+-------------
+IP			taken care of by 'sendto'
+-------------
+UDP			taken care of by 'sendto'
+-------------
+DNS
+16	id 		same as question id
+1	qr		1 for response
+4	opcode	0 for standard query
+1	AA		1 for authoritative answer
+1	TC		0 for no truncations
+1	rd		same as question rd recursion desired
+1	ra		0 for no recursion available.
+3	z		0 for reserved for future use
+4	rcode	0 for no error, 3 for nonexistent host/domain
+16	qdc		same as question qdc (hopefully 1)
+16	anc		N - number of answer resource records
+16	nsc		0 for no ns RRs
+16	arc		0 for no additional RRs
+
+-------------
+RRs
+QUESTION
+XX 	qname	same as question qname
+16 	qtype	same as question qtype
+16 	qclass	same as question qclass
+ANSWER * N
+XX	name	0xC00C - numchars chars format of name in compressed format
+16	type	1 - host address (IP), 12 - domain name
+16	class	1 for internet
+32	ttl		0 for no caching, 3600 (0xE10) - 1 hour
+16	rdlen   L - length of rdata field
+XX	rdata	numchars chars format of answer
+-------------

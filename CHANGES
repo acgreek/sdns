@@ -1,0 +1,22 @@
+Change Log
+
+2002-07-13 @ 19:32 PAcific time - FC
+Changed MX record to default precedence to 1 instead of 0 to compensate
+for M$ error.
+
+2001-10-29 @ 11:30 - DJH
+Added MX capability
+added ability to create different servers on different ip addresses,
+each as a separate process.
+
+2001-08-20 @ 09:04 -
+Added multiple IP address answers.
+
+2001-07-19 @ 13:48 -
+Made SDNS version 2.0.  This version provides multiple resource records in the
+answer section.  Each request answers with all aliases to the question.  The
+first answer RR is the normal answer provided so as to make nslookup happy.
+To see all of the aliases, do 'dig <query>', which shows all aliases.
+
+2000-12-01 @ 10:29 -
+Made SDNS version 1.0 and started the change log.

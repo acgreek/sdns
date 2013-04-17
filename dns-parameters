@@ -1,0 +1,268 @@
+
+DOMAIN NAME SYSTEM PARAMETERS
+
+(last updated June 08 2001)
+
+The Internet Domain Naming System (DNS) includes several parameters.
+These are documented in [RFC1034] and [RFC1035].  The CLASS parameter
+is listed here.  The per CLASS parameters are defined in separate RFCs
+as indicated.
+
+Domain Name System (DNS) IANA Considerations - [RFC2929]
+
+Domain System Class:
+
+  Decimal  Name                                         References
+---------  ----                                         ----------
+        0  Reserved                                         [IANA]
+        1  Internet (IN)                                 [RFC1035]
+        2  Unassigned                                       [IANA]
+        3  Chaos (CH)                                    [RFC1035]
+        4  Hesiod (HS)                                   [RFC1035]
+    5-253  Unassigned                                       [IANA]
+      254  None                                          [RFC2136]
+      255  Any [QCLASS Only]                             [RFC1035]
+256-65534  Unassigned                                       [IANA]
+    65535  Reserved                                         [IANA]
+
+In the Internet (IN) class the following Resource Record (RR) TYPEs
+and QTYPEs are defined:
+
+TYPE            value and meaning                        Reference
+----------      --------------------------------------   ---------
+
+A               1 a host address                         [RFC1035]
+NS              2 an authoritative name server           [RFC1035]
+MD              3 a mail destination (Obsolete - use MX) [RFC1035]
+MF              4 a mail forwarder (Obsolete - use MX)	 [RFC1035]
+CNAME           5 the canonical name for an alias	 [RFC1035]
+SOA             6 marks the start of a zone of authority [RFC1035]
+MB              7 a mailbox domain name (EXPERIMENTAL)	 [RFC1035]
+MG              8 a mail group member (EXPERIMENTAL)	 [RFC1035]
+MR              9 a mail rename domain name (EXPERIMENTAL)[RFC1035]
+NULL            10 a null RR (EXPERIMENTAL)              [RFC1035]
+WKS             11 a well known service description      [RFC1035]
+PTR             12 a domain name pointer                 [RFC1035]
+HINFO           13 host information                      [RFC1035]
+MINFO           14 mailbox or mail list information      [RFC1035]
+MX              15 mail exchange                         [RFC1035]
+TXT             16 text strings                          [RFC1035]
+
+RP              17 for Responsible Person                [RFC1183]
+AFSDB           18 for AFS Data Base location            [RFC1183]
+X25             19 for X.25 PSDN address                 [RFC1183]
+ISDN            20 for ISDN address                      [RFC1183]
+RT              21 for Route Through                     [RFC1183]
+
+NSAP            22 for NSAP address, NSAP style A record [RFC1706]
+NSAP-PTR        23 
+
+SIG             24 for security signature                [RFC2535]
+KEY             25 for security key                      [RFC2535]
+
+PX              26 X.400 mail mapping information        [RFC2163]
+
+GPOS            27 Geographical Position                 [RFC1712]
+
+AAAA            28 IP6 Address                           [Thomson]
+
+LOC             29 Location Information                    [Vixie]
+
+NXT             30 Next Domain                           [RFC2535]
+
+EID             31 Endpoint Identifier                    [Patton]
+
+NIMLOC          32 Nimrod Locator                         [Patton]
+
+SRV             33 Server Selection                      [RFC2782]
+
+ATMA            34 ATM Address                         [Dobrowski]
+
+NAPTR           35 Naming Authority Pointer     [RFC2168, RFC2915]
+
+KX              36 Key Exchanger                         [RFC2230]
+
+CERT            37 CERT                                  [RFC2538]
+
+A6              38 A6                                    [RFC2874]
+
+DNAME           39 DNAME                                 [RFC2672]
+
+SINK            40 SINK                                 [Eastlake]
+
+OPT             41 OPT                                   [RFC2671]
+
+APL             42 APL                                   [RFC3123]
+
+UINFO           100                                [IANA-Reserved]
+UID             101                                [IANA-Reserved]
+GID             102                                [IANA-Reserved]
+UNSPEC          103                                [IANA-Reserved]
+
+TKEY            249 Transaction Key                      [RFC2930]
+TSIG            250 Transaction Signature                [RFC2845]
+IXFR            251 incremental transfer                 [RFC1995]
+AXFR            252 transfer of an entire zone           [RFC1035]
+MAILB           253 mailbox-related RRs (MB, MG or MR)	 [RFC1035]
+MAILA           254 mail agent RRs (Obsolete - see MX)	 [RFC1035]
+*               255 A request for all records		 [RFC1035]
+
+Note: In RFC 1002, two types are defined.  It is not clear that these
+are in use, though if so their assignment does conflict with those
+above.
+
+	NB	32	NetBIOS general Name Service
+	NBSTAT	33	NetBIOS NODE STATUS
+
+Domain System Operation Code:
+
+OpCode   Name                                          References
+------   ----                                          ----------
+     0   Query                                          [RFC1035]
+     1   IQuery                                         [RFC1035]
+     2   Status                                         [RFC1035]
+     3   reserved                                          [IANA]
+     4   Notify                                         [RFC1996]
+     5   Update                                         [RFC2136]
+    6-15 available for assignment 
+
+Domain System Response Code:
+
+ RCODE   Name                                          References
+ -----   ----                                          ----------
+     0   NoError     No Error                           [RFC1035]
+     1   FormErr     Format Error                       [RFC1035]
+     2   ServFail    Server Failure                     [RFC1035]
+     3   NXDomain    Non-Existent Domain                [RFC1035]
+     4   NotImp      Not Implemented                    [RFC1035]
+     5   Refused     Query Refused                      [RFC1035]
+     6   YXDomain    Name Exists when it should not     [RFC2136]
+     7   YXRRSet     RR Set Exists when it should not   [RFC2136]
+     8   NXRRSet     RR Set that should exist does not  [RFC2136]
+     9   NotAuth     Server Not Authoritative for zone  [RFC2136]
+    10   NotZone     Name not contained in zone         [RFC2136]
+ 11-15               available for assignment
+    16   BADVERS     Bad OPT Version                    [RFC2671]
+    16   BADSIG      TSIG Signature Failure             [RFC2845]
+    17   BADKEY      Key not recognized                 [RFC2845]
+    18   BADTIME     Signature out of time window       [RFC2845]
+    19   BADMODE     Bad TKEY Mode                      [RFC2930]
+    20   BADNAME     Duplicate key name                 [RFC2930]
+    21   BADALG      Algorithm not supported            [RFC2930]
+22-3840              available for assignment
+  0x0016-0x0F00
+3841-4095            Private Use
+  0x0F01-0x0FFF
+4096-65535           available for assignment
+  0x1000-0xFFFF
+
+
+REFERENCES
+
+[RFC1034] Mockapetris, P., "Domain Names - Concepts and
+          Facilities", STD 13, RFC 1034, USC/Information Sciences
+          Institute, November 1987.
+
+[RFC1035] Mockapetris, P., "Domain Names - Implementation and
+          Specification", STD 13, RFC 1035, USC/Information Sciences
+          Institute, November 1987.
+
+[RFC1183] Everhart, C., Mamakos, L., Ullmann, R., and P. Mockapetris,
+          Editors, "New DNS RR Definitions", RFC 1183, Transarc,
+          University of Maryland, Prime Computer, USC/Information
+          Sciences Institute, October 1990.
+
+[RFC1706] Manning, B., and R. Colella, "DNS NSAP Resource Records",
+          RFC 1706, USC/ISI and NIST, October 1994.
+
+[RFC1712] Farrell, C., M. Schulze, B. Pleitner, and D. Baldoni, "DNS
+          Encoding of Geographical Location", RFC 1712, Curtin
+          University of Technology, October 1994.
+
+[RFC1995] Ohta, M., "Incremental Zone Transfer in DNS", RFC 1995,
+          Tokyo Institute of Technology, August 1996.
+
+[RFC1996] Vixie, P., "A Mechanism for Prompt Notification of Zone
+          Changes (DNS NOTIFY)", RFC 1996, ISC, August 1996.
+
+[RFC2065] Eastlake, D., and C. Kaufman, "Domain Name System Security 
+          Extensions", RFC 2065, CyberCash, Iris, January 1997.
+
+[RFC2136] Vixie, P., S. Thomson, Y. Rekhter, and J. Bound, "Dynamic
+          Updates in the Domain Name System (DNS UPDATE) Dynamic
+          Updates in the Domain Name System (DNS UPDATE), RFC 2136,
+          ISC, Bellcore, Cisco, DEC, April 1997.
+
+[RFC2163] Allocchio, C., "Using the Internet DNS to Distribute MIXER
+          Conformant Global Address Mapping (MCGAM)", RFC 2163,
+          GARR-Italy, July 1977.
+
+[RFC2168] R. Danie1, M. Mealling., "Resolution of Uniform Resource
+	  Identifiers using the Domain Name System", RFC 2168, Los
+	  Alamos National Laboratory, Network Solutions, Inc., 
+          June 1997.
+
+[RFC2230] Atkinson, R., "Key Exchange Delegation Record for the DNS",
+          RFC 2230, NRL, October 1997.
+
+[RFC2535] Eastlake, D., "Domain Name System Security Extensions", RFC
+	  2535, IBM, March 1999.
+
+[RFC2538] Eastlake, D., Gudmundsson, O., "Storing Certificates in the
+	  Domain Name System (DNS)", RFC 2538, IBM, TIS Labs, March 1999.
+
+[RFC2671] Vixie, P., "Extension Mechanisms for DNS (EDNS0)", RFC 2671,
+          August 1999.
+
+[RFC2782] Gulbrandsen, A., Vixie, P. and L. Esibov, "A DNS RR for
+          Specifying the Location of Services (DNS SRV)", RFC 2782,
+          February 2000.
+
+[RFC2845] Vixie, P., Gudmundsson, O., Eastlake, D. and B. Wellington,
+          "Secret Key Transaction Authentication for DNS (TSIG)",
+          May 2000.
+
+[RFC2874] Crawford, M., Huitema, C. and S. Thomson, "DNS Extensions to
+          Support IPv6 Address Aggregation and Renumbering", RFC 2874,
+          July 2000.
+
+[RFC2915] Mealling, M. and R. Daniel, "The Naming Authority Pointer
+          (NAPTR) DNS Resource Record", RFC 2915, September 2000.
+
+[RFC2929] D. Eastlake, 3rd, E. Brunner-Williams, and B. Manning, 
+          "Domain Name System (DNS) IANA Considerations", RFC 2929,
+          September 2000.
+
+[RFC2930] Eastlake, D., "Secret Key Establishment for DNS (TKEY RR)",
+          RFC 2930, September 2000.
+
+[RFC3123] P. Koch, "A DNS RR Type for Lists of Address Prefixes (APL RR)",
+          RFC 3123, June 2001.
+
+
+
+PEOPLE
+
+[Daniel] Ron Daniel, <rdaniel@lanl.gov>, June 1997.
+
+[Dobrowski] George Dobrowski, <ghd@cc.bellcore.com>, July 1996.
+
+[Eastlake] Donald E. Eastlake, III <dee3@torque.pothole.com>, January 1995,
+
+November 1997.
+
+[IANA] Internet Assigned Numbers Authority, <iana@iana.org>, December 1994.
+
+[Mockapetris] Paul Mockapetris, <pvm@isi.edu>, November 1994.
+
+[Otha] Masataka Ohta, <mohta@necom830.cc.titech.ac.jp>, March 1995.
+
+[Patton] Michael Patton, <map@bbn.com>, June 1995.
+
+[Thomson] Susan Thomson, <set@thumper.bellcore.com>, August 1995.
+
+[Vixie] Paul Vixie, <paul@vix.com>, June 1997.
+
+
+[]
+

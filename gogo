@@ -1,0 +1,6 @@
+cd /sdns
+while true
+do
+./sdns
+sleep 2
+done&

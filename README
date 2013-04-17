@@ -7,7 +7,7 @@ Put the sdns files in /sdns - typically, like this:
 
 	cd /;tar -xvpf sdns.tar
 
-If you wish to use the dsitributed setup (you almost certainly do not) as root type:
+If you wish to use the distributed setup (you almost certainly do not) as root type:
 	'sdns'
 
 If you wish to customize sdns, read the rest of this document.
@@ -19,25 +19,25 @@ README		This file
 makefile	The makefile for this directory
 		Type 'make' to update sdns to reflect changes
 
-gogo		This is a short shell script that loops forever running sdns
+gogo		a short shell script that loops forever running sdns
 		It is typically invoked from /etc/rc.d/rc.local
 
-go		This kills the sdns process, allowing an update to be made.
-		If gogo invoked sdns, killing sdns will cause a restart.
+go		    kills the sdns process, allowing an update to be made.
+		     If gogo invoked sdns, killing sdns will cause a restart.
 
-hosts		This is the hosts file used to create the lookup tables for sdns
+hosts		hosts file used to create the lookup tables for sdns
 
-defaults	This is the defaul domain file that specifies default answers for whole domains
+defaults	default domain file that specifies default answers for whole domains
 
-convert.pl	This is a perl script that creates table.h from hosts and defaults
+convert.pl	perl script that creates table.h from hosts and defaults
 
 table.h		This is the part of the sdns program that specifies answers to specific
 		inquiries on your system.  It is generated from 'defaults' and 'hosts'
 		by convert.pl
 
-sdns.c		This is the C source program for serving DNS inquiries
+sdns.c		program source 
 
-sdns		This is the executable program for serving DNS inquiries
+sdns		generated executable 
 
 =========== Operation:
 
@@ -53,12 +53,12 @@ The easiest change to make is to copy a 'hosts' file (typically
 Then type make:
 	mv sdns zz;make
 
-Then, if you have used 'gogo' to get the sdns running, type:
+Then, if the sdns service is already running via  'gogo', type:
 	go
 
 This will invoke the changes.
 
-To change default domains, edit 'defauls' then use:
+To change default domains, edit 'defaults' then use:
 	mv sdns zz;make
 	go
 as above.

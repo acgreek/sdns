@@ -1,5 +1,8 @@
 sdns - Secure DNS.  
 
+I wrote this with few others back when interned at the lab
+
+
 Put the sdns files in /sdns - typically, like this:
 
 	cd /;tar -xvpf sdns.tar

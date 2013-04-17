@@ -43,9 +43,9 @@ HEADER *in_head, *out_head; socklen_t len; struct sockaddr_in servaddr, cliaddr;
 
 #include "table.h"
 
-void logfile(FILE * F)
-{
-	t=time(NULL);strftime(timestamp, 20, "%Y/%m/%d %T", localtime(&t));
+void logfile(FILE * F) {
+	t=time(NULL);
+	strftime(timestamp, 20, "%Y/%m/%d %T", localtime(&t));
 	if (!strcmp(message, lastmess)) {
 		messcount++;
 		if (messcount == 10 || messcount == 50 || messcount == 100 || messcount == 1000 || messcount == 2000 || messcount == 5000)
@@ -72,25 +72,25 @@ void logfile(FILE * F)
 		fprintf(F,"%s %s:%d sdns %s\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),message);}
 }
 
-void dumppacket()
-{
+void dumppacket() {
 	F=fopen(DNSlog,"a+");
 	if (F != NULL) {
 		sprintf(message,"Dump: (%d)", inpacketsize);
 		for (i = 0; i < inpacketsize; i++) {
-			c=in_packet[i];sprintf(newmess," %X", c);strcat(message,newmess);}
+			c=in_packet[i];sprintf(newmess," %X", c);strcat(message,newmess);
+		}
 		logfile(F);}			/* This sprintf makes RECVSIZE*3 + 8 the minimum size for BUFFSIZE */
 	fclose(F);
 }
 
-int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
-{
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
 	LOG1("Starting sdns");
 	lastmess[0] = '\0';
 	strncpy(lastmess2, "", sizeof(lastmess2) -1);
 	messcount = 0;messcount2 = 0; logcount=0;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
-		LOG1("Can't create socket");printf("Can't create socket\n");exit(1);
+		LOG1("Can't create socket");printf("Can't create socket\n");
+		exit(EXIT_FAILURE);
 	}
 	if (argv[1]) {
 		bzero(&servaddr, sizeof(servaddr));
@@ -108,8 +108,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 		LOG1("Can't Bind");printf("Can't Bind\n");
 		exit(EXIT_FAILURE);
 	}
-	while (1)
-	{
+	while (1) {
 		for (i = 0; i < BUFFSIZE; i++) {
 			out_packet[i] = '\0';
 			in_packet[i] = '\0';
@@ -122,34 +121,51 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 		if (size > RECVSIZE) {
 			inpacketsize=RECVSIZE;LOG1("System call screwed up - packet too big"); continue;}
 		if (size <= HEADERLENGTH) {
-			LOG1("packet too small"); continue;}
-		in_head = (HEADER*) &in_packet; out_head = (HEADER*) &out_packet;
+			LOG1("packet too small");
+			continue;
+		}
+		in_head = (HEADER*) &in_packet;
+		out_head = (HEADER*) &out_packet;
 		if (in_head->opcode != QUERY) {
-			LOG1("Not a query (opcode != 0)"); continue;}
+			LOG1("Not a query (opcode != 0)");
+			continue;
+		}
 		if (in_head->qr != 0) {
-			LOG1("Not a query (qr != 0)"); continue;}
+			LOG1("Not a query (qr != 0)");
+			continue;
+		}
 		if (in_head->qdcount == 0) {
-			LOG1("Question count == 0"); continue;}
+			LOG1("Question count == 0");
+			continue;
+		}
 		qindex = 0; size = 0; read_offset = in_packet + HEADERLENGTH;
 		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
 			charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
 			if ((qindex != 0) && (charstilldot != 0))
 				question[qindex++] = '.';
 			while (charstilldot--) {
-				question[qindex++] = tolower(read_offset[size++]); } }
+				question[qindex++] = tolower(read_offset[size++]);
+			}
+		}
 		size++;	/* there could be real hazardous characters in the question... */
 		qtype = read_offset[size] * 256 + read_offset[size + 1]; /* Qtype */
 		if (size <= 1) {
-			LOG1("Illegal name size (too small)"); continue; }
+			LOG1("Illegal name size (too small)");
+			continue;
+		}
 		if (size > 255) {
-			LOG1("Illegal name size (too big)"); continue; }
+			LOG1("Illegal name size (too big)");
+			continue;
+		}
 		port=cliaddr.sin_port;
 		if (port == NAMESERVER_PORT) {
-			LOG1("Port 53 as source"); continue;} /* does zone transfer use port 53 source?*/
+			LOG1("Port 53 as source");
+			continue;
+		} /* does zone transfer use port 53 source?*/
 		out_head->id = in_head->id;
 		ans_size = translate(qtype);
-		switch (qtype)
-		{case 1:	reqtype="A";ignore=0;break;
+		switch (qtype) {
+			case 1:	reqtype="A";ignore=0;break;
 			case 2:		reqtype="NS";ignore=0;break;
 			case 3:		reqtype="MD(old)";ignore=NOTIMP;break;
 			case 4:		reqtype="MF(old)";ignore=NOTIMP;break;
@@ -251,9 +267,11 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			memcpy(out_packet + HEADERLENGTH, in_packet + HEADERLENGTH, size + 4); /* Copy question section into out packet */
 			read_offset = out_packet + size + HEADERLENGTH + 4; out_head->rcode = 0; /* Point read_offset to answer section */
 			memcpy(read_offset, answer, ans_size);}     /* Copy answer section into out packet */
-		if (ignore != -1)
-		{retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
-			if (retval == -1) LOG1("could not send");}
+		if (ignore != -1) {
+			retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
+			if (retval == -1)
+				LOG1("could not send");
+		}
 	}
-	exit(0);
+	exit(EXIT_SUCCESS);
 }

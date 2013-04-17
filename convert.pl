@@ -24,11 +24,13 @@ print "int translate(unsigned short int qtype)\n{\n";
 print "
 #include <stdio.h>
 #include <string.h>
- 
 extern char question[];
 extern char out[];
 extern char answer[];
 extern int ancount,arcount ;
+
+#define RECVSIZE 512
+#define BUFFSIZE RECVSIZE*4 /* fc - BUFFSIZE better be > 255 bytes bigger than max ethernet frame */
 ";
 
 for $hostsline (<>) {
@@ -67,13 +69,13 @@ for $hostsline (<>) {
 					$name_first_answer .= trrr($hostname) . $firstname; 
 					$mx_first_answer .= trrr($hostname) . $firstname; }
 				print "\t\tif (qtype == $TYPE_IP) {\n";
-				print "\t\t\tstrcpy(out,\"$allnames[0]\");\n";
+				print "\t\t\tstrncpy(out,\"$allnames[0]\", BUFFSIZE-1);\n";
 				print sprintfstr($ip_first_answer);
 				print "\n\t\telse if (qtype == $TYPE_MX) {\n";
-				print "\t\t\tstrcpy(out,\"$allnames[0]\");\n";
+				print "\t\t\tstrncpy(out,\"$allnames[0]\",BUFFSIZE-1);\n";
 				print sprintfstr($mx_first_answer); 
 				print "\n\t\telse {\n";
-				print "\t\t\tstrcpy(out,\"$ip\");\n";
+				print "\t\t\tstrncpy(out,\"$ip\",BUFFSIZE-1);\n";
 				print sprintfstr($name_first_answer) . " }\n"; } } }
 	print "\n"; }
 
@@ -84,7 +86,7 @@ foreach $domain (sort keys %defaultdomain) {
 	print "\t if (strlen(question) > strlen(\"$domain\"))\n";
 	print "\t\tif(strncmp(question + (strlen(question) - strlen(\"$domain\")),\n";
 	print "\t\t\t\t\"$domain\", strlen(\"$domain\")) == 0) {\n";
-	print "\t\t\tstrcpy(out,\"$ip\");\n";
+	print "\t\t\tstrncpy(out,\"$ip\",BUFFSIZE-1);\n";
 	$ancount=1;
 	print sprintfstr($defdomain_answer) . "\n"; }
 

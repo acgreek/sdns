@@ -50,24 +50,25 @@ void logfile(FILE * F)
 		messcount++;
 		if (messcount == 10 || messcount == 50 || messcount == 100 || messcount == 1000 || messcount == 2000 || messcount == 5000)
 			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),lastmess,messcount);
-		strcpy(oldtimestamp,timestamp);}
+		strncpy(oldtimestamp,timestamp,sizeof(oldtimestamp) -1 );}
 	else if (!strcmp(message, lastmess2)) {
 		messcount2++;
 		if (messcount2 == 10 || messcount2 == 50 || messcount2 == 100 || messcount2 == 1000 || messcount2 == 2000 || messcount2 == 5000)
 			fprintf(F, "%s %s:%d sdns %s (%d times)\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),lastmess2,messcount2);
-		strcpy(oldtimestamp2,timestamp);}
+		strncpy(oldtimestamp2,timestamp,sizeof(oldtimestamp) -1);}
 	else    {
 		if (messcount2 > 1)
 			fprintf(F, "%s %s:%s sdns %s (%d times in total)\n",oldtimestamp2,oldIP2,oldPort2,lastmess2,messcount2);
 		messcount2=messcount;
-		strcpy(lastmess2,lastmess);strcpy(oldIP2, oldIP);
-		strcpy(oldPort2,oldPort);
-		strcpy(oldtimestamp2,oldtimestamp);
+		strncpy(lastmess2,lastmess, sizeof(lastmess2)-1) ;
+		strncpy(oldIP2, oldIP,sizeof(oldIP2)-1);
+		strncpy(oldPort2,oldPort,sizeof(oldPort2)-1);
+		strncpy(oldtimestamp2,oldtimestamp,sizeof(oldtimestamp) -1);
 		messcount = 1;
-		strcpy(lastmess,message);
+		strncpy(lastmess,message,sizeof(lastmess)-1);
 		sprintf(oldIP,"%s",inet_ntoa(cliaddr.sin_addr));
 		sprintf(oldPort,"%d",(cliaddr.sin_port));
-		strcpy(oldtimestamp,timestamp);
+		strncpy(oldtimestamp,timestamp,sizeof(oldtimestamp) -1);
 		fprintf(F,"%s %s:%d sdns %s\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),message);}
 }
 
@@ -84,8 +85,10 @@ void dumppacket()
 
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 {
-	LOG1("Starting sdns");strcpy(lastmess, "");
-	strcpy(lastmess2, ""); messcount = 0;messcount2 = 0; logcount=0;
+	LOG1("Starting sdns");
+	lastmess[0] = '\0';
+	strncpy(lastmess2, "", sizeof(lastmess2) -1);
+	messcount = 0;messcount2 = 0; logcount=0;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
 		LOG1("Can't create socket");printf("Can't create socket\n");exit(1);
 	}

@@ -21,6 +21,15 @@ print "/* translate sets the string 'answer' equal to the answer of the query,\n
 print "   sets ancount equal to the number of answers in the answer string, and\n";
 print "   returns the length of the answer string */ \n";
 print "int translate(unsigned short int qtype)\n{\n";
+print "
+#include <stdio.h>
+#include <string.h>
+ 
+extern char question[];
+extern char out[];
+extern char answer[];
+extern int ancount,arcount ;
+";
 
 for $hostsline (<>) {
 	@allnames = ();

@@ -22,28 +22,31 @@
 #define	TIMESTAMPSIZE 64
 #define DNSPORT  0x3500
 #define DNSlog "logfile"
-//#define LOG1(x) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,x);logfile(F);} fclose(F);dumppacket();}
-#define LOG1(x) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,x);logfile(F);} fclose(F);}
-#define LOG2(y,z) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,y,z); logfile(F);} fclose(F);}
-#define LOG3(x,y,z) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,x,y,z); logfile(F);} fclose(F);}
-#define LOG4(w,x,y,z) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,w,x,y,z); logfile(F);} fclose(F);}
-#define LOG5(v,w,x,y,z) {FILE *F=fopen(DNSlog,"a+");if (F != NULL) {sprintf(message,v,w,x,y,z); logfile(F);} fclose(F);}
+#define LOG(x, ...) { \
+	char message[BUFFSIZE];  \
+	FILE *F=fopen(DNSlog,"a+");\
+	if (F != NULL) {\
+		snprintf(message,BUFFSIZE-1,x, ##__VA_ARGS__);\
+		logfile(F,message); \
+	} \
+	fclose(F); \
+}
 
-unsigned int messcount=0,  messcount2=0;	// log queue should be lengthened
-char in_packet[BUFFSIZE], timestamp[TIMESTAMPSIZE], out_packet[BUFFSIZE], question[BUFFSIZE], answer[BUFFSIZE],
-	 oldIP[TIMESTAMPSIZE], oldPort[TIMESTAMPSIZE], oldIP2[TIMESTAMPSIZE], oldPort2[TIMESTAMPSIZE],
-	 oldtimestamp[TIMESTAMPSIZE], oldtimestamp2[TIMESTAMPSIZE], lastmess[BUFFSIZE], lastmess2[BUFFSIZE],
-	 *read_offset, message[BUFFSIZE], out[BUFFSIZE], newmess[8], *reqtype;
-//unsigned char charstilldot;
-//int inpacketsize, ans_size, retval, sockfd, logcount, ancount, arcount, qtype, ignore;
-/* fc HEADER *in_head, *out_head; socklen_t len; struct sockaddr_in servaddr, cliaddr;*/
-int ancount,arcount ;
 
-HEADER *in_head, *out_head; socklen_t len; struct sockaddr_in servaddr, cliaddr;
+char  question[BUFFSIZE], answer[BUFFSIZE], out[BUFFSIZE];
+int ancount,arcount;
+
+
+struct sockaddr_in servaddr, cliaddr;
+char in_packet[BUFFSIZE], out_packet[BUFFSIZE];
 
 #include "table.h"
+void logfile(FILE * F,char * message) {
+	static unsigned int messcount=0,  messcount2=0;	// log queue should be lengthened
+	static char oldIP[TIMESTAMPSIZE], oldPort[TIMESTAMPSIZE], oldIP2[TIMESTAMPSIZE], oldPort2[TIMESTAMPSIZE];
+	static char oldtimestamp[TIMESTAMPSIZE], oldtimestamp2[TIMESTAMPSIZE], lastmess[BUFFSIZE], lastmess2[BUFFSIZE];
 
-void logfile(FILE * F) {
+	char timestamp[TIMESTAMPSIZE];
 	time_t t=time(NULL);
 	strftime(timestamp, 20, "%Y/%m/%d %T", localtime(&t));
 	if (!strcmp(message, lastmess)) {
@@ -76,25 +79,26 @@ void dumppacket(unsigned inpacketsize) {
 	FILE *F;
 	F=fopen(DNSlog,"a+");
 	if (F != NULL) {
-		sprintf(message,"Dump: (%d)", inpacketsize);
+		char message[BUFFSIZE];
+		snprintf(message,sizeof(message)-1, "Dump: (%d)", inpacketsize);
 		unsigned i;
 		for (i = 0; i < inpacketsize; i++) {
 			unsigned int c=in_packet[i];
-			sprintf(newmess," %X", c);
+			char newmess[8];
+			snprintf(newmess,7," %X", c);
 			strcat(message,newmess);
 		}
-		logfile(F);
+		logfile(F, message);
 	}			/* This sprintf makes RECVSIZE*3 + 8 the minimum size for BUFFSIZE */
 	fclose(F);
 }
 
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
-	LOG1("Starting sdns");
-	lastmess[0] = '\0';
-	strncpy(lastmess2, "", sizeof(lastmess2) -1);
+	struct sockaddr_in servaddr;
+	LOG("Starting sdns");
 	int sockfd;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
-		LOG1("Can't create socket");printf("Can't create socket\n");
+		LOG("Can't create socket");printf("Can't create socket\n");
 		exit(EXIT_FAILURE);
 	}
 	if (argv[1]) {
@@ -110,7 +114,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 	}
 	int retval = bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
 	if (retval == -1) {
-		LOG1("Can't Bind");printf("Can't Bind\n");
+		LOG("Can't Bind");printf("Can't Bind\n");
 		exit(EXIT_FAILURE);
 	}
 	int size;
@@ -122,35 +126,35 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			question[i] = '\0';
 			answer[i] = '\0';
 		}
-		len = sizeof(cliaddr);
+		socklen_t len = sizeof(cliaddr);
 		size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
 		//unsigned int inpacketsize=size;
 		if (size > RECVSIZE) {
 		//	inpacketsize=RECVSIZE;
-			LOG1("System call screwed up - packet too big");
+			LOG("System call screwed up - packet too big");
 			continue;
 		}
 		if (size <= HEADERLENGTH) {
-			LOG1("packet too small");
+			LOG("packet too small");
 			continue;
 		}
-		in_head = (HEADER*) &in_packet;
-		out_head = (HEADER*) &out_packet;
+		HEADER *in_head = (HEADER*) &in_packet;
+		HEADER *out_head = (HEADER*) &out_packet;
 		if (in_head->opcode != QUERY) {
-			LOG1("Not a query (opcode != 0)");
+			LOG("Not a query (opcode != 0)");
 			continue;
 		}
 		if (in_head->qr != 0) {
-			LOG1("Not a query (qr != 0)");
+			LOG("Not a query (qr != 0)");
 			continue;
 		}
 		if (in_head->qdcount == 0) {
-			LOG1("Question count == 0");
+			LOG("Question count == 0");
 			continue;
 		}
 		unsigned int qindex = 0;
 		int size = 0;
-		read_offset = in_packet + HEADERLENGTH;
+		char *read_offset = in_packet + HEADERLENGTH;
 		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
 			unsigned char charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
 			if ((qindex != 0) && (charstilldot != 0))
@@ -162,21 +166,22 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 		size++;	/* there could be real hazardous characters in the question... */
 		int qtype = read_offset[size] * 256 + read_offset[size + 1]; /* Qtype */
 		if (size <= 1) {
-			LOG1("Illegal name size (too small)");
+			LOG("Illegal name size (too small)");
 			continue;
 		}
 		if (size > 255) {
-			LOG1("Illegal name size (too big)");
+			LOG("Illegal name size (too big)");
 			continue;
 		}
 		unsigned int port=cliaddr.sin_port;
 		if (port == NAMESERVER_PORT) {
-			LOG1("Port 53 as source");
+			LOG("Port 53 as source");
 			continue;
 		} /* does zone transfer use port 53 source?*/
 		out_head->id = in_head->id;
 		int ans_size = translate(qtype);
 		int ignore = 0;
+		char *reqtype;
 		switch (qtype) {
 			case 1:	reqtype="A";ignore=0;break;
 			case 2:	reqtype="NS";ignore=0;break;
@@ -234,7 +239,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			default:	reqtype="Unknown";ignore=NOTIMP;break;
 		}
 		if (ans_size == 0) {
-			LOG4("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
+			LOG("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
 			out_head->rcode = 3;		/* no such host or domain (we are authoritive) */
 			out_head->ancount = 0x00;	/* 0 answers (assumed) */
 			out_head->qdcount = 0x00;	/* 0 question only (assumed) */
@@ -248,8 +253,10 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			out_head->ra = 0;		/* No recursion available */
 			out_head->unused = 0;		/* Unset unused bits */
 			size=-4;}			/* no question, no answer, no problem */
-		else if (ignore == -1) {LOG5("Ignoring %s (%s:%d) => %s", question, reqtype, qtype, out);}
-		else if (ignore != 0) {LOG5("Code %s (%s:%d) => %d", question, reqtype, qtype, ignore);
+		else if (ignore == -1) {
+			LOG("Ignoring %s (%s:%d) => %s", question, reqtype, qtype, out);
+		} else if (ignore != 0) {
+			LOG("Code %s (%s:%d) => %d", question, reqtype, qtype, ignore);
 			out_head->rcode = ignore;       /* Response code - Per above */
 			out_head->ancount = 0x00;	/* 0 answers (assumed) */
 			out_head->qdcount = 0x00;	/* 0 question only (assumed) */
@@ -264,7 +271,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			out_head->unused = 0;		/* Unset unused bits */
 			size=-4;}			/* no question, no answer, no problem */
 		else	{
-			LOG5("lookup %s (%s:%d) => %s", question, reqtype, qtype, out);
+			LOG("lookup %s (%s:%d) => %s", question, reqtype, qtype, out);
 			out_head->rcode = 0;            /* Response code - no error indication */
 			out_head->ancount = htons(ancount);	/* ancount answers */
 			out_head->qdcount = 0x100;	/* 1 question only (assumed) */
@@ -283,7 +290,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 		if (ignore != -1) {
 			retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
 			if (retval == -1)
-				LOG1("could not send");
+				LOG("could not send");
 		}
 	}
 	exit(EXIT_SUCCESS);

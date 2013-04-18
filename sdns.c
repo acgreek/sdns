@@ -107,16 +107,16 @@ void setResponse(HEADER *out_head,int rd, uint rcode, int ancount,int qdcount, i
 	out_head->ra = 0;		/* No recursion available */
 	out_head->unused = 0;		/* Unset unused bits */
 }
-int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
-	struct sockaddr_in servaddr;
-	LOG("Starting sdns");
+
+int buildListenSocket(int argc, char *argv[]) {
 	int sockfd;
+	struct sockaddr_in servaddr;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
 		LOG("Can't create socket");
 		fprintf(stderr,"Can't create socket\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
-	if (argv[1]) {
+	if (argc > 1) {
 		bzero(&servaddr, sizeof(servaddr));
 		servaddr.sin_family = AF_INET;
 		servaddr.sin_addr.s_addr = inet_addr(argv[1]);
@@ -131,8 +131,12 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 	if (retval == -1) {
 		LOG("Can't Bind");
 		fprintf(stderr,"Can't Bind\n");
-		exit(EXIT_FAILURE);
+		return -1;
 	}
+	return sockfd;
+}
+
+void listenAndRespondLoop(int sockfd) {
 	while (1) {
 		int i;
 		for (i = 0; i < BUFFSIZE; i++) {
@@ -240,18 +244,18 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			case 40:reqtype="SINK";ignore=NOTIMP;break;
 			case 41:reqtype="OPT";ignore=NOTIMP;break;
 			case 42:reqtype="APL";ignore=REFUSED;break;
-			case 100:	reqtype="UINFO";ignore=REFUSED;break;
-			case 101:	reqtype="UID";ignore=REFUSED;break;
-			case 102:	reqtype="GID";ignore=REFUSED;break;
-			case 103:	reqtype="UNSPEC";ignore=REFUSED;break;
-			case 249: case -7:	reqtype="TransKey";ignore=REFUSED;break;
-			case 250: case -6:	reqtype="TransSig";ignore=REFUSED;break;
-			case 251: case -5:	reqtype="IncXfer";ignore=REFUSED;break;
-			case 252: case -4:	reqtype="AXFR";ignore=REFUSED;break;
-			case 253: case -3:	reqtype="MAILB";ignore=REFUSED;break;
-			case 254: case -2:	reqtype="MAILA";ignore=REFUSED;break;
-			case 255: case -1:	reqtype="ALL";ignore=0;break;
-			default:	reqtype="Unknown";ignore=NOTIMP;break;
+			case 100:reqtype="UINFO";ignore=REFUSED;break;
+			case 101:reqtype="UID";ignore=REFUSED;break;
+			case 102:reqtype="GID";ignore=REFUSED;break;
+			case 103:reqtype="UNSPEC";ignore=REFUSED;break;
+			case 249: case -7:reqtype="TransKey";ignore=REFUSED;break;
+			case 250: case -6:reqtype="TransSig";ignore=REFUSED;break;
+			case 251: case -5:reqtype="IncXfer";ignore=REFUSED;break;
+			case 252: case -4:reqtype="AXFR";ignore=REFUSED;break;
+			case 253: case -3:reqtype="MAILB";ignore=REFUSED;break;
+			case 254: case -2:reqtype="MAILA";ignore=REFUSED;break;
+			case 255: case -1:reqtype="ALL";ignore=0;break;
+			default:reqtype="Unknown";ignore=NOTIMP;break;
 		}
 		if (ans_size == 0) {
 			LOG("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
@@ -264,7 +268,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			LOG("Code %s (%s:%d) => %d", question, reqtype, qtype, ignore);
 			setResponse(out_head,in_head->rd, ignore, 0,0,0);
 			size=-4;
-		}			/* no question, no answer, no problem */
+		}
 		else	{
 			LOG("lookup %s (%s:%d) => %s", question, reqtype, qtype, out);
 			setResponse(out_head,in_head->rd, 0, htons(ancount),0x100,htons(arcount));
@@ -272,10 +276,18 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			read_offset = out_packet + size + HEADERLENGTH + 4; out_head->rcode = 0; /* Point read_offset to answer section */
 			memcpy(read_offset, answer, ans_size);}     /* Copy answer section into out packet */
 		if (ignore != -1) {
-			retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
+			int retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
 			if (retval == -1)
 				LOG("could not send");
 		}
 	}
+}
+
+int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
+	LOG("Starting sdns");
+	int sockfd = buildListenSocket(argc,argv);
+	if (-1 == sockfd)
+		exit(EXIT_FAILURE);
+	listenAndRespondLoop(sockfd);
 	exit(EXIT_SUCCESS);
 }

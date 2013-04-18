@@ -37,7 +37,7 @@ char  question[BUFFSIZE], answer[BUFFSIZE], out[BUFFSIZE];
 int ancount,arcount;
 
 
-struct sockaddr_in servaddr, cliaddr;
+struct sockaddr_in cliaddr;
 char in_packet[BUFFSIZE], out_packet[BUFFSIZE];
 
 #include "table.h"
@@ -93,12 +93,27 @@ void dumppacket(unsigned inpacketsize) {
 	fclose(F);
 }
 
+void setResponse(HEADER *out_head,int rd, uint rcode, int ancount,int qdcount, int arcount) {
+	out_head->rcode = rcode;		/* no such host or domain (we are authoritive) */
+	out_head->ancount = ancount;	/* 0 answers (assumed) */
+	out_head->qdcount = qdcount;	/* 0 question only (assumed) */
+	out_head->nscount = 0x00;	/* 0 number of name server resource records in authority record section */
+	out_head->arcount = arcount;	/* 0 number or resource records in the additional records section */
+	out_head->qr = 1;		/* Response */
+	out_head->opcode = 0;		/* Opcode */
+	out_head->aa = 1;		/* Authoritative */
+	out_head->tc = 0;		/* Not truncated */
+	out_head->rd = rd;	/* Recursion desired is to be copied over (I don't want it...) */
+	out_head->ra = 0;		/* No recursion available */
+	out_head->unused = 0;		/* Unset unused bits */
+}
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
 	struct sockaddr_in servaddr;
 	LOG("Starting sdns");
 	int sockfd;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
-		LOG("Can't create socket");printf("Can't create socket\n");
+		LOG("Can't create socket");
+		fprintf(stderr,"Can't create socket\n");
 		exit(EXIT_FAILURE);
 	}
 	if (argv[1]) {
@@ -114,10 +129,10 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 	}
 	int retval = bind(sockfd, (struct sockaddr *) &servaddr, sizeof(servaddr));
 	if (retval == -1) {
-		LOG("Can't Bind");printf("Can't Bind\n");
+		LOG("Can't Bind");
+		fprintf(stderr,"Can't Bind\n");
 		exit(EXIT_FAILURE);
 	}
-	int size;
 	while (1) {
 		int i;
 		for (i = 0; i < BUFFSIZE; i++) {
@@ -127,7 +142,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			answer[i] = '\0';
 		}
 		socklen_t len = sizeof(cliaddr);
-		size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
+		int size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
 		//unsigned int inpacketsize=size;
 		if (size > RECVSIZE) {
 		//	inpacketsize=RECVSIZE;
@@ -153,7 +168,7 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 			continue;
 		}
 		unsigned int qindex = 0;
-		int size = 0;
+		size = 0;
 		char *read_offset = in_packet + HEADERLENGTH;
 		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
 			unsigned char charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
@@ -240,50 +255,19 @@ int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused)))
 		}
 		if (ans_size == 0) {
 			LOG("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
-			out_head->rcode = 3;		/* no such host or domain (we are authoritive) */
-			out_head->ancount = 0x00;	/* 0 answers (assumed) */
-			out_head->qdcount = 0x00;	/* 0 question only (assumed) */
-			out_head->nscount = 0x00;	/* 0 number of name server resource records in authority record section */
-			out_head->arcount = 0x00;	/* 0 number or resource records in the additional records section */
-			out_head->qr = 1;		/* Response */
-			out_head->opcode = 0;		/* Opcode */
-			out_head->aa = 1;		/* Authoritative */
-			out_head->tc = 0;		/* Not truncated */
-			out_head->rd = in_head->rd;	/* Recursion desired is to be copied over (I don't want it...) */
-			out_head->ra = 0;		/* No recursion available */
-			out_head->unused = 0;		/* Unset unused bits */
-			size=-4;}			/* no question, no answer, no problem */
+			setResponse(out_head,in_head->rd, 3, 0,0,0);
+			size=-4;
+		}			/* no question, no answer, no problem */
 		else if (ignore == -1) {
 			LOG("Ignoring %s (%s:%d) => %s", question, reqtype, qtype, out);
 		} else if (ignore != 0) {
 			LOG("Code %s (%s:%d) => %d", question, reqtype, qtype, ignore);
-			out_head->rcode = ignore;       /* Response code - Per above */
-			out_head->ancount = 0x00;	/* 0 answers (assumed) */
-			out_head->qdcount = 0x00;	/* 0 question only (assumed) */
-			out_head->nscount = 0x00;	/* 0 number of name server resource records in authority record section */
-			out_head->arcount = 0x00;	/* 0 number or resource records in the additional records section */
-			out_head->qr = 1;		/* Response */
-			out_head->opcode = 0;		/* Opcode */
-			out_head->aa = 1;		/* Authoritative */
-			out_head->tc = 0;		/* Not truncated */
-			out_head->rd = in_head->rd;	/* Recursion desired is to be copied over (I don't want it...) */
-			out_head->ra = 0;		/* No recursion available */
-			out_head->unused = 0;		/* Unset unused bits */
-			size=-4;}			/* no question, no answer, no problem */
+			setResponse(out_head,in_head->rd, ignore, 0,0,0);
+			size=-4;
+		}			/* no question, no answer, no problem */
 		else	{
 			LOG("lookup %s (%s:%d) => %s", question, reqtype, qtype, out);
-			out_head->rcode = 0;            /* Response code - no error indication */
-			out_head->ancount = htons(ancount);	/* ancount answers */
-			out_head->qdcount = 0x100;	/* 1 question only (assumed) */
-			out_head->nscount = 0x00;	/* 0 number of name server resource records in authority record section */
-			out_head->arcount = htons(arcount);	/* 0 number or resource records in the additional records section */
-			out_head->qr = 1;		/* Response */
-			out_head->opcode = 0;		/* Opcode */
-			out_head->aa = 1;		/* Authoritative */
-			out_head->tc = 0;		/* Not truncated */
-			out_head->rd = in_head->rd;	/* Recursion desired is to be copied over (I don't want it...) */
-			out_head->ra = 0;		/* No recursion available */
-			out_head->unused = 0;		/* Unset unused bits */
+			setResponse(out_head,in_head->rd, 0, htons(ancount),0x100,htons(arcount));
 			memcpy(out_packet + HEADERLENGTH, in_packet + HEADERLENGTH, size + 4); /* Copy question section into out packet */
 			read_offset = out_packet + size + HEADERLENGTH + 4; out_head->rcode = 0; /* Point read_offset to answer section */
 			memcpy(read_offset, answer, ans_size);}     /* Copy answer section into out packet */

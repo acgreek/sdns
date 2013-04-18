@@ -39,7 +39,6 @@ int ancount,arcount;
 
 
 struct sockaddr_in cliaddr;
-char in_packet[BUFFSIZE], out_packet[BUFFSIZE];
 
 #include "table.h"
 void logfile(FILE * F,char * message) {
@@ -76,7 +75,7 @@ void logfile(FILE * F,char * message) {
 		fprintf(F,"%s %s:%d sdns %s\n",timestamp,inet_ntoa(cliaddr.sin_addr),(cliaddr.sin_port),message);}
 }
 
-void dumppacket(unsigned inpacketsize) {
+void dumppacket(char * in_packet, unsigned inpacketsize) {
 	FILE *F;
 	F=fopen(DNSlog,"a+");
 	if (F != NULL) {
@@ -141,71 +140,9 @@ static void sigterm_handler(int sig __attribute__((unused)) ) {
 	g_done=1;
 }
 
-static void listenAndRespondLoop(int sockfd) {
-	while (!g_done) {
-		int i;
-		for (i = 0; i < BUFFSIZE; i++) {
-			out_packet[i] = '\0';
-			in_packet[i] = '\0';
-			question[i] = '\0';
-			answer[i] = '\0';
-		}
-		socklen_t len = sizeof(cliaddr);
-		int size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
-		//unsigned int inpacketsize=size;
-		if (size > RECVSIZE) {
-		//	inpacketsize=RECVSIZE;
-			LOG("System call screwed up - packet too big");
-			continue;
-		}
-		if (size <= HEADERLENGTH) {
-			LOG("packet too small");
-			continue;
-		}
-		HEADER *in_head = (HEADER*) &in_packet;
-		HEADER *out_head = (HEADER*) &out_packet;
-		if (in_head->opcode != QUERY) {
-			LOG("Not a query (opcode != 0)");
-			continue;
-		}
-		if (in_head->qr != 0) {
-			LOG("Not a query (qr != 0)");
-			continue;
-		}
-		if (in_head->qdcount == 0) {
-			LOG("Question count == 0");
-			continue;
-		}
-		unsigned int qindex = 0;
-		size = 0;
-		char *read_offset = in_packet + HEADERLENGTH;
-		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
-			unsigned char charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
-			if ((qindex != 0) && (charstilldot != 0))
-				question[qindex++] = '.';
-			while (charstilldot--) {
-				question[qindex++] = tolower(read_offset[size++]);
-			}
-		}
-		size++;	/* there could be real hazardous characters in the question... */
-		int qtype = read_offset[size] * 256 + read_offset[size + 1]; /* Qtype */
-		if (size <= 1) {
-			LOG("Illegal name size (too small)");
-			continue;
-		}
-		if (size > 255) {
-			LOG("Illegal name size (too big)");
-			continue;
-		}
-		unsigned int port=cliaddr.sin_port;
-		if (port == NAMESERVER_PORT) {
-			LOG("Port 53 as source");
-			continue;
-		} /* does zone transfer use port 53 source?*/
-		out_head->id = in_head->id;
-		int ans_size = translate(qtype);
-		int ignore = 0;
-		char *reqtype;
+static int setReqTypeRtnIgnore(int qtype,char **reqtypepp){
+	int ignore =0;
+	char * reqtype;
 		switch (qtype) {
 			case 1:	reqtype="A";ignore=0;break;
 			case 2:	reqtype="NS";ignore=0;break;
@@ -262,14 +199,84 @@ static void listenAndRespondLoop(int sockfd) {
 			case 255: case -1:reqtype="ALL";ignore=0;break;
 			default:reqtype="Unknown";ignore=NOTIMP;break;
 		}
+		(*reqtypepp) = reqtype;
+		return ignore;
+}
+
+static void listenAndRespondLoop(int sockfd) {
+	char in_packet[BUFFSIZE], out_packet[BUFFSIZE];
+	while (!g_done) {
+		out_packet[0] = '\0';
+		in_packet[0] = '\0';
+		question[0] = '\0';
+		answer[0] = '\0';
+		socklen_t len = sizeof(cliaddr);
+		int size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
+		//unsigned int inpacketsize=size;
+		if (size > RECVSIZE) {
+		//	inpacketsize=RECVSIZE;
+			LOG("System call screwed up - packet too big");
+			continue;
+		}
+		if (size <= HEADERLENGTH) {
+			LOG("packet too small");
+			continue;
+		}
+		HEADER *in_head = (HEADER*) &in_packet;
+		HEADER *out_head = (HEADER*) &out_packet;
+		if (in_head->opcode != QUERY) {
+			LOG("Not a query (opcode != 0)");
+			continue;
+		}
+		if (in_head->qr != 0) {
+			LOG("Not a query (qr != 0)");
+			continue;
+		}
+		if (in_head->qdcount == 0) {
+			LOG("Question count == 0");
+			continue;
+		}
+		unsigned int qindex = 0;
+		size = 0;
+		char *read_offset = in_packet + HEADERLENGTH;
+		while(read_offset[size] != '\0'){		/* pre-zero'ed packet will run into a zero after end of packet if nowhere else */
+			unsigned char charstilldot = (unsigned char)read_offset[size++];	/* the size so far... */
+			if ((qindex != 0) && (charstilldot != 0))
+				question[qindex++] = '.';
+			while (charstilldot--) {
+				question[qindex++] = tolower(read_offset[size++]);
+			}
+		}
+		size++;	/* there could be real hazardous characters in the question... */
+		if (size <= 1) {
+			LOG("Illegal name size (too small)");
+			continue;
+		}
+		if (size > 255) {
+			LOG("Illegal name size (too big)");
+			continue;
+		}
+		unsigned int port=cliaddr.sin_port;
+		if (port == NAMESERVER_PORT) {
+			LOG("Port 53 as source");
+			continue;
+		} /* does zone transfer use port 53 source?*/
+		int qtype = read_offset[size] * 256 + read_offset[size + 1]; /* Qtype */
+		out_head->id = in_head->id;
+		int ans_size = translate(qtype);
+		int ignore = 0;
+		char *reqtype="NOT_SET";
+		ignore = setReqTypeRtnIgnore(qtype,&reqtype);
+		if (-1 == ignore) {
+			LOG("Ignoring %s (%s:%d) => %s", question, reqtype, qtype, out);
+			continue;
+		}
 		if (ans_size == 0) {
 			LOG("lookup %s (%s:%d) - not in table", question, reqtype, qtype);
 			setResponse(out_head,in_head->rd, 3, 0,0,0);
 			size=-4;
 		}			/* no question, no answer, no problem */
-		else if (ignore == -1) {
-			LOG("Ignoring %s (%s:%d) => %s", question, reqtype, qtype, out);
-		} else if (ignore != 0) {
+		else if (ignore != 0) {
 			LOG("Code %s (%s:%d) => %d", question, reqtype, qtype, ignore);
 			setResponse(out_head,in_head->rd, ignore, 0,0,0);
 			size=-4;
@@ -279,12 +286,12 @@ static void listenAndRespondLoop(int sockfd) {
 			setResponse(out_head,in_head->rd, 0, htons(ancount),0x100,htons(arcount));
 			memcpy(out_packet + HEADERLENGTH, in_packet + HEADERLENGTH, size + 4); /* Copy question section into out packet */
 			read_offset = out_packet + size + HEADERLENGTH + 4; out_head->rcode = 0; /* Point read_offset to answer section */
-			memcpy(read_offset, answer, ans_size);}     /* Copy answer section into out packet */
-		if (ignore != -1) {
-			int retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
-			if (retval == -1)
-				LOG("could not send");
-		}
+			memcpy(read_offset, answer, ans_size);
+		}     /* Copy answer section into out packet */
+
+		int retval = sendto(sockfd,&out_packet,(HEADERLENGTH + size + 4 + ans_size), 0, (const struct sockaddr *) &cliaddr, len);
+		if (retval == -1)
+			LOG("could not send");
 	}
 }
 

@@ -8,6 +8,7 @@
 #include <ctype.h>
 #include <arpa/nameser.h>  /*for HEADER structure */
 #include <time.h>
+#include <signal.h>
 
 //#include <sys/socket.h>
 //#include <netinet/in.h>
@@ -93,7 +94,7 @@ void dumppacket(unsigned inpacketsize) {
 	fclose(F);
 }
 
-void setResponse(HEADER *out_head,int rd, uint rcode, int ancount,int qdcount, int arcount) {
+static void setResponse(HEADER *out_head,int rd, uint rcode, int ancount,int qdcount, int arcount) {
 	out_head->rcode = rcode;		/* no such host or domain (we are authoritive) */
 	out_head->ancount = ancount;	/* 0 answers (assumed) */
 	out_head->qdcount = qdcount;	/* 0 question only (assumed) */
@@ -108,7 +109,7 @@ void setResponse(HEADER *out_head,int rd, uint rcode, int ancount,int qdcount, i
 	out_head->unused = 0;		/* Unset unused bits */
 }
 
-int buildListenSocket(int argc, char *argv[]) {
+static int buildListenSocket(int argc, char *argv[]) {
 	int sockfd;
 	struct sockaddr_in servaddr;
 	if ((sockfd = socket(PF_INET, SOCK_DGRAM, 0)) == -1) {
@@ -135,9 +136,13 @@ int buildListenSocket(int argc, char *argv[]) {
 	}
 	return sockfd;
 }
+static int g_done=0;
+static void sigterm_handler(int sig __attribute__((unused)) ) {
+	g_done=1;
+}
 
-void listenAndRespondLoop(int sockfd) {
-	while (1) {
+static void listenAndRespondLoop(int sockfd) {
+	while (!g_done) {
 		int i;
 		for (i = 0; i < BUFFSIZE; i++) {
 			out_packet[i] = '\0';
@@ -284,6 +289,8 @@ void listenAndRespondLoop(int sockfd) {
 }
 
 int main(int argc __attribute__((unused)), char *argv[] __attribute__((unused))) {
+	signal (SIGTERM, sigterm_handler);
+	signal (SIGINT, sigterm_handler);
 	LOG("Starting sdns");
 	int sockfd = buildListenSocket(argc,argv);
 	if (-1 == sockfd)

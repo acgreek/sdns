@@ -206,10 +206,13 @@ static int setReqTypeRtnIgnore(int qtype,char **reqtypepp){
 static void listenAndRespondLoop(int sockfd) {
 	char in_packet[BUFFSIZE], out_packet[BUFFSIZE];
 	while (!g_done) {
-		out_packet[0] = '\0';
-		in_packet[0] = '\0';
-		question[0] = '\0';
-		answer[0] = '\0';
+		int i;
+		for (i = 0; i < BUFFSIZE; i++) {
+			out_packet[i] = '\0';
+			in_packet[i] = '\0';
+			question[i] = '\0';
+			answer[i] = '\0';
+		}
 		socklen_t len = sizeof(cliaddr);
 		int size=recvfrom(sockfd, in_packet, RECVSIZE, 0, (struct sockaddr *) &cliaddr, (socklen_t *)&len);
 		//unsigned int inpacketsize=size;
